@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stato Casa</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 500px;
+      margin: auto;
+    }
+    h1 { text-align: center; margin-bottom: 20px; }
+    .card {
+      border: 1px solid #ccc;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      font-size: 18px;
+    }
+    .status-free { color: #28a745; font-weight: bold; }
+    .status-occupied { color: #dc3545; font-weight: bold; }
+    .sectionTitle { font-weight: bold; margin-bottom: 8px; }
+    button {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      margin: 12px 0;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .btn-use { background-color: #007bff; color: white; }
+    .btn-free { background-color: #28a745; color: white; }
+    .btn-choice { background-color: #6c757d; color: white; margin-top: 8px; }
+    .btn-edit { background-color: #ffc107; color: #000; margin-top: 5px; }
+    .hidden { display: none; }
+    textarea { width:100%; padding:8px; border-radius:6px; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <h1>Stato Casa</h1>
+
+  <!-- stato bagni -->
+  <div id="bathroomSection"></div>
+  <button id="useButton" class="btn-use">Usa un bagno</button>
+  <div id="choiceButtons" class="hidden"></div>
+  <button id="freeButton" class="btn-free hidden">Ho finito</button>
+
+  <!-- MENU -->
+  <div class="card">
+    <div class="sectionTitle">🍽️ Menu</div>
+    <div id="menuDisplay"></div>
+    <button id="menuEditBtn" class="btn-edit">✏️ Modifica Menu</button>
+    <div id="menuEditArea" class="hidden">
+      <textarea id="menuTextarea" rows="6" placeholder="Scrivi qui il menu..."></textarea>
+      <button id="menuSaveBtn" class="btn-free">Salva</button>
+    </div>
+  </div>
+
+  <!-- TURNI -->
+  <div class="card">
+    <div class="sectionTitle">🧼 Turni piatti</div>
+    <div id="turniDisplay"></div>
+    <button id="turniEditBtn" class="btn-edit">✏️ Modifica Turni</button>
+    <div id="turniEditArea" class="hidden">
+      <textarea id="turniTextarea" rows="4" placeholder="Pranzo: Mario &#10;Cena: Anna"></textarea>
+      <button id="turniSaveBtn" class="btn-free">Salva</button>
+    </div>
+  </div>
+
+  <script>
+    // USER ID
+    const localKey='bagno_app_user';
+    let userId=localStorage.getItem(localKey);
+    if(!userId){ userId=Date.now()+''+Math.random(); localStorage.setItem(localKey,userId); }
+
+    async function getState(){
+      const r=await fetch('/api/state');
+      return r.json();
+    }
+    async function setState(newState){
+      await fetch('/api/state',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({...newState,user:userId})
+      });
+    }
+
+    // --- RENDER -------------------------------------
+    async function render(){
+      const data=await getState();
+      renderBagni(data);
+      renderMenu(data);
+      renderTurni(data);
+    }
+
+    function renderBagni(data){
+        const container=document.getElementById('bathroomSection');
+        const useButton=document.getElementById('useButton');
+        const freeButton=document.getElementById('freeButton');
+        const choiceButtons=document.getElementById('choiceButtons');
+
+        choiceButtons.classList.add('hidden');
+        choiceButtons.innerHTML='';
+
+        container.innerHTML='';
+        ['sopra','sotto'].forEach(b=>{
+          const card=document.createElement('div');
+          card.className='card';
+          const occ=(data[b].state==='occupied');
+          const span=document.createElement('span');
+          span.className=occ?'status-occupied':'status-free';
+          span.textContent=occ?'Occupato':'Libero';
+          card.textContent=`🚽 Bagno ${b} — `;
+          card.appendChild(span);
+          container.appendChild(card);
+        });
+
+        const myB=['sopra','sotto'].find(b=>data[b].state==='occupied' && data[b].user===userId);
+        if(myB){
+          useButton.classList.add('hidden');
+          freeButton.classList.remove('hidden');
+          freeButton.onclick=async()=>{await setState({bagno:myB,state:'free'}); render();}
+        } else {
+          freeButton.classList.add('hidden');
+          useButton.classList.remove('hidden');
+          useButton.onclick=()=>{
+            const freeList=['sopra','sotto'].filter(b=>data[b].state==='free');
+            if(!freeList.length){alert('Tutti i bagni sono occupati!'); return;}
+            choiceButtons.classList.remove('hidden');
+            choiceButtons.innerHTML='Seleziona bagno:<br>';
+            freeList.forEach(b=>{
+              const btn=document.createElement('button');
+              btn.className='btn-choice'; btn.textContent=b;
+              btn.onclick=async()=>{await setState({bagno:b,state:'occupied'}); render();}
+              choiceButtons.appendChild(btn);
+            });
+          };
+        }
+    }
+
+    // --- MENU -----------------------------------------
+    function renderMenu(data){
+      const d=document;
+      const out=d.getElementById('menuDisplay');
+      const editBtn=d.getElementById('menuEditBtn');
+      const editArea=d.getElementById('menuEditArea');
+      const ta=d.getElementById('menuTextarea');
+      out.innerHTML='';
+
+      if(data.menu){
+        const menu=data.menu; // es. { Lunedì:{pranzo:"",cena:""},... }
+        Object.keys(menu).forEach(day=>{
+          const wrap=document.createElement('div');
+          wrap.innerHTML=`<strong>${day}</strong><br>• Pranzo: ${menu[day].pranzo || '-'}<br>• Cena: ${menu[day].cena || '-'}`;
+          out.appendChild(wrap);
+        });
+      } else out.textContent='(nessun menu inserito)';
+
+      editBtn.onclick=()=>{
+        const pin=prompt('Inserisci PIN');
+        if(pin==='6789'){
+          editBtn.classList.add('hidden');
+          editArea.classList.remove('hidden');
+          ta.value=JSON.stringify(data.menu || {},null,2);
+        }
+      };
+      document.getElementById('menuSaveBtn').onclick=async()=>{
+        let newMenu;
+        try{ newMenu=JSON.parse(ta.value.trim()); }catch{ alert('Formato JSON non valido'); return; }
+        await setState({menu:newMenu});
+        editArea.classList.add('hidden'); editBtn.classList.remove('hidden');
+        render();
+      };
+    }
+
+    // --- TURNI -----------------------------------------
+    function renderTurni(data){
+      const d=document;
+      const out=d.getElementById('turniDisplay');
+      const editBtn=d.getElementById('turniEditBtn');
+      const editArea=d.getElementById('turniEditArea');
+      const ta=d.getElementById('turniTextarea');
+
+      out.innerHTML='';
+      if(data.turni){
+        out.innerHTML=`• Pranzo: ${data.turni.pranzo || '-'}<br>• Cena: ${data.turni.cena || '-'}`;
+      } else out.textContent='(nessun turno inserito)';
+
+      editBtn.onclick=()=>{
+        const pin=prompt('Inserisci PIN');
+        if(pin==='6789'){
+          editBtn.classList.add('hidden');
+          editArea.classList.remove('hidden');
+          ta.value=`Pranzo: ${data.turni?.pranzo || ''}\nCena: ${data.turni?.cena || ''}`;
+        }
+      };
+      document.getElementById('turniSaveBtn').onclick=async()=>{
+        const lines=ta.value.split('\n');
+        const obj={pranzo:'',cena:''};
+        lines.forEach(l=>{
+          if(l.toLowerCase().startsWith('pranzo')) obj.pranzo=l.split(':')[1]?.trim();
+          if(l.toLowerCase().startsWith('cena'))   obj.cena=l.split(':')[1]?.trim();
+        });
+        await setState({turni:obj});
+        editArea.classList.add('hidden'); editBtn.classList.remove('hidden');
+        render();
+      };
+    }
+
+    //-------------------------
+    render();
+    // refresh + notifica
+    setInterval(async()=>{const old=await getState(); setTimeout(()=>{render();},0);},5000);
+  </script>
+</body>
+</html>
