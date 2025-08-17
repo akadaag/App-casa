@@ -1,5 +1,7 @@
 import { kv } from '@vercel/kv';
 
+export const config = { runtime: 'edge' };  // 👈 necessario per usare Upstash KV
+
 const DEFAULT_STATE = {
   sopra: { state: 'free', user: null },
   sotto: { state: 'free', user: null },
@@ -7,11 +9,11 @@ const DEFAULT_STATE = {
   turni: {}
 };
 
-export default async function handler(req, res) {
+export default async function handler(req) {
   // 1) Recupera lo stato dal KV
   let state = await kv.get('bagno_app_state');
 
-  // 👉 Upstash a volte restituisce una stringa JSON: va convertita
+  // Upstash può restituire stringa → parse
   if (typeof state === 'string') {
     try {
       state = JSON.parse(state);
@@ -20,7 +22,7 @@ export default async function handler(req, res) {
     }
   }
 
-  // 2) Se non c'è ancora nulla salvato → inizializza con DEFAULT_STATE
+  // 2) Se non c'è ancora nulla salvato → inizializza
   if (!state || typeof state !== 'object') {
     state = { ...DEFAULT_STATE };
     await kv.set('bagno_app_state', state);
@@ -28,12 +30,16 @@ export default async function handler(req, res) {
 
   // 3) GET → restituisce lo stato
   if (req.method === 'GET') {
-    return res.status(200).json(state);
+    return new Response(JSON.stringify(state), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
-  // 4) POST → aggiorna lo stato
+  // 4) POST → aggiorna
   if (req.method === 'POST') {
-    const { bagno, state: newState, user, menu, turni } = req.body;
+    const body = await req.json();
+    const { bagno, state: newState, user, menu, turni } = body;
 
     // Bagni
     if (bagno && newState) {
@@ -46,17 +52,23 @@ export default async function handler(req, res) {
       }
     }
 
-    // Menu
     if (menu)  state.menu  = menu;
-
-    // Turni
     if (turni) state.turni = turni;
 
-    // Salva nel KV
     await kv.set('bagno_app_state', state);
 
-    return res.status(200).json(state);
+    return new Response(JSON.stringify(state), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
+
+  return new Response(JSON.stringify({ error: 'Method not allowed'}), {
+    status: 405,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
 
   // Metodo non supportato
   return res.status(405).json({ error: 'Method not allowed' });
