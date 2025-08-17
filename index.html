@@ -90,7 +90,12 @@ function renderBagni(d){
   const myB=['sopra','sotto'].find(b=>d[b].state==='occupied'&&d[b].user===d.user);
   ch.classList.add('hidden'); ch.innerHTML='';
   if(myB){ use.classList.add('hidden'); free.classList.remove('hidden');
-    free.onclick=async()=>{ await setState({bagno:myB,state:'free'}); render(); };
+    free.onclick = async () => {
+-  await setState({ bagno: myB, state: 'free' });
++  await setState({ bagno: myB, state: 'free', user: PIN });
+  render();
+};
+
   }else{
     free.classList.add('hidden'); use.classList.remove('hidden');
     use.onclick=()=>{
@@ -99,7 +104,12 @@ function renderBagni(d){
       ch.classList.remove('hidden'); ch.innerHTML='Seleziona bagno:<br>';
       available.forEach(b=>{
         const btn=document.createElement('button');btn.className='btn btn-choice';
-        btn.textContent=b; btn.onclick=async()=>{ await setState({bagno:b,state:'occupied'}); render(); };
+        btn.textContent=b; btn.onclick = async () => {
+-  await setState({ bagno: b, state: 'occupied' });
++  await setState({ bagno: b, state: 'occupied', user: PIN });
+  render();
+};
+
         ch.appendChild(btn);
       });
     };
@@ -223,3 +233,4 @@ setInterval(render,2000);
 </script>
 </body>
 </html>
+
