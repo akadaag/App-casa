@@ -73,6 +73,9 @@ let currentDate = new Date();
 if(currentDate < startDate) currentDate = new Date(startDate);
 if(currentDate > endDate)   currentDate = new Date(endDate);
 
+// indice per scorrere tra i giorni inseriti nei turni
+let currentTurnoIndex = 0;
+
 // Simulazione localStorage per l'ambiente Claude
 const mockStorage = {};
 const localStorage = {
@@ -118,7 +121,6 @@ async function render(){
  renderBagni(d);
  renderMenuView(d.menu);
  renderTurniView(d.turni);
- document.getElementById('currentDayTitle').innerText = giorni[(currentDate.getDay()+6)%7];
 }
 
 function renderBagni(d){
@@ -196,21 +198,43 @@ function closeMenuEdit(){
 
 function renderTurniView(turni){
   const view=document.getElementById('turniView'),
-        icon=document.getElementById('turniEditIcon');
+        icon=document.getElementById('turniEditIcon'),
+        navRow=document.querySelector('.navRow'),
+        prevBtn=document.getElementById('prevDay'),
+        nextBtn=document.getElementById('nextDay'),
+        currentDayTitle=document.getElementById('currentDayTitle');
 
-  const selectedDayName = giorni[(currentDate.getDay()+6)%7];
-
+  const turniKeys = Object.keys(turni || {});
+  
   view.innerHTML='';
-  if(turni && Object.keys(turni).length > 0){
-    // Mostra tutti i turni salvati
-    let content = '';
-    Object.keys(turni).forEach(dayKey => {
-      const t = turni[dayKey];
-      content += `<div style="margin-bottom:10px;"><strong>${dayKey}</strong><br>• Pranzo: ${t.pranzo||'-'}<br>• Cena: ${t.cena||'-'}</div>`;
-    });
-    view.innerHTML = content;
-  } else {
+  
+  if(turniKeys.length === 0){
+    // Nessun turno inserito
     view.innerHTML = 'Nessun turno inserito';
+    navRow.style.display = 'none';
+  } else if(turniKeys.length === 1){
+    // Solo un turno inserito - mostra senza frecce
+    const onlyKey = turniKeys[0];
+    const t = turni[onlyKey];
+    view.innerHTML = `<div><strong>${onlyKey}</strong><br>• Pranzo: ${t.pranzo||'-'}<br>• Cena: ${t.cena||'-'}</div>`;
+    navRow.style.display = 'none';
+  } else {
+    // Più turni inseriti - mostra con frecce per scorrere
+    navRow.style.display = 'flex';
+    
+    // Assicurati che l'indice sia valido
+    if(currentTurnoIndex >= turniKeys.length) currentTurnoIndex = 0;
+    if(currentTurnoIndex < 0) currentTurnoIndex = turniKeys.length - 1;
+    
+    const currentKey = turniKeys[currentTurnoIndex];
+    const t = turni[currentKey];
+    
+    view.innerHTML = `<div><strong>${currentKey}</strong><br>• Pranzo: ${t.pranzo||'-'}<br>• Cena: ${t.cena||'-'}</div>`;
+    currentDayTitle.innerText = `${currentTurnoIndex + 1} di ${turniKeys.length}`;
+    
+    // Abilita/disabilita frecce
+    prevBtn.disabled = false;
+    nextBtn.disabled = false;
   }
 
   icon.onclick = ()=>{ 
@@ -218,10 +242,6 @@ function renderTurniView(turni){
       openTurniEdit(turni||{}); 
     }
   };
-
-  // blocca frecce ai limiti del periodo
-  document.getElementById('prevDay').disabled = (currentDate.getTime() <= startDate.getTime());
-  document.getElementById('nextDay').disabled = (currentDate.getTime() >= endDate.getTime());
 }
 
 function openTurniEdit(current){
@@ -284,14 +304,12 @@ function closeTurniEdit(){
 }
 
 document.getElementById('prevDay').onclick = ()=>{
-  const prev = new Date(currentDate);
-  prev.setDate(prev.getDate() - 1);
-  if(prev >= startDate){ currentDate = prev; render(); }
+  currentTurnoIndex--;
+  render();
 };
 document.getElementById('nextDay').onclick = ()=>{
-  const next = new Date(currentDate);
-  next.setDate(next.getDate() + 1);
-  if(next <= endDate){ currentDate = next; render(); }
+  currentTurnoIndex++;
+  render();
 };
 
 render();
