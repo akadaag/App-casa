@@ -11,6 +11,15 @@ export default async function handler(req, res) {
   // 1) Recupera lo stato dal KV
   let state = await kv.get('bagno_app_state');
 
+  // 👉 Upstash a volte restituisce una stringa JSON: va convertita
+  if (typeof state === 'string') {
+    try {
+      state = JSON.parse(state);
+    } catch (e) {
+      state = null;
+    }
+  }
+
   // 2) Se non c'è ancora nulla salvato → inizializza con DEFAULT_STATE
   if (!state || typeof state !== 'object') {
     state = { ...DEFAULT_STATE };
@@ -52,9 +61,3 @@ export default async function handler(req, res) {
   // Metodo non supportato
   return res.status(405).json({ error: 'Method not allowed' });
 }
-
-
-  // ---------- Method Not Allowed ----------
-  res.status(405).json({ error: 'Method not allowed' });
-}
-
