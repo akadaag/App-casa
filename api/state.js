@@ -8,33 +8,25 @@ const DEFAULT_STATE = {
 };
 
 export default async function handler(req, res) {
-
-  // Recupera lo stato dal KV (o inizializza con default_state se non esiste)
+  // 1) Recupera lo stato dal KV
   let state = await kv.get('bagno_app_state');
 
-  // Se lo stato non esiste (null) oppure le proprietà fondamentali mancano,
-  // inizializziamo con lo stato di default
-  if (
-    !state ||
-    state.sopra === undefined ||
-    state.sotto === undefined ||
-    state.menu  === undefined ||
-    state.turni === undefined
-  ) {
+  // 2) Se non c'è ancora nulla salvato → inizializza con DEFAULT_STATE
+  if (!state || typeof state !== 'object') {
     state = { ...DEFAULT_STATE };
     await kv.set('bagno_app_state', state);
   }
 
-  // ---------- GET ----------
+  // 3) GET → restituisce lo stato
   if (req.method === 'GET') {
     return res.status(200).json(state);
   }
 
-  // ---------- POST ----------
+  // 4) POST → aggiorna lo stato
   if (req.method === 'POST') {
     const { bagno, state: newState, user, menu, turni } = req.body;
 
-    // Aggiorna il bagno
+    // Bagni
     if (bagno && newState) {
       if (newState === 'occupied') {
         state[bagno] = { state: 'occupied', user };
@@ -45,21 +37,22 @@ export default async function handler(req, res) {
       }
     }
 
-    // Aggiorna menu
-    if (menu) {
-      state.menu = menu;
-    }
+    // Menu
+    if (menu)  state.menu  = menu;
 
-    // Aggiorna turni
-    if (turni) {
-      state.turni = turni;
-    }
+    // Turni
+    if (turni) state.turni = turni;
 
     // Salva nel KV
     await kv.set('bagno_app_state', state);
 
     return res.status(200).json(state);
   }
+
+  // Metodo non supportato
+  return res.status(405).json({ error: 'Method not allowed' });
+}
+
 
   // ---------- Method Not Allowed ----------
   res.status(405).json({ error: 'Method not allowed' });
