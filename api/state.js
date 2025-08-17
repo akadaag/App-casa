@@ -1,4 +1,4 @@
-import { Redis } from '@upstash/redis';
+import { kv } from '@upstash/kv';
 
 export const config = { runtime: 'edge' };
 
@@ -13,19 +13,19 @@ export default async function handler(req) {
   // 1) Recupera lo stato dal KV
   let state = await kv.get('bagno_app_state');
 
-  // Upstash può restituire stringa → parse
+  // Se viene restituita una stringa → parse
   if (typeof state === 'string') {
     try {
       state = JSON.parse(state);
-    } catch (e) {
+    } catch {
       state = null;
     }
   }
 
-  // 2) Se non c'è ancora nulla salvato → inizializza
+  // 2) Se ancora non esiste lo stato → inizializza
   if (!state || typeof state !== 'object') {
     state = { ...DEFAULT_STATE };
-    await kv.set('bagno_app_state', state);
+    await kv.set('bagno_app_state', JSON.stringify(state));
   }
 
   // 3) GET → restituisce lo stato
@@ -36,10 +36,9 @@ export default async function handler(req) {
     });
   }
 
-  // 4) POST → aggiorna
+  // 4) POST → aggiorna lo stato
   if (req.method === 'POST') {
-    const body = await req.json();
-    const { bagno, state: newState, user, menu, turni } = body;
+    const { bagno, state: newState, user, menu, turni } = await req.json();
 
     // Bagni
     if (bagno && newState) {
@@ -52,10 +51,11 @@ export default async function handler(req) {
       }
     }
 
+    // Menu + Turni
     if (menu)  state.menu  = menu;
     if (turni) state.turni = turni;
 
-    await kv.set('bagno_app_state', state);
+    await kv.set('bagno_app_state', JSON.stringify(state));
 
     return new Response(JSON.stringify(state), {
       status: 200,
@@ -63,10 +63,9 @@ export default async function handler(req) {
     });
   }
 
-  // 5) Metodo non supportato
+  // Metodo non supportato
   return new Response(JSON.stringify({ error: 'Method not allowed' }), {
     status: 405,
     headers: { 'Content-Type': 'application/json' }
   });
 }
-
