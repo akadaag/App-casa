@@ -73,12 +73,45 @@ let currentDate = new Date();
 if(currentDate < startDate) currentDate = new Date(startDate);
 if(currentDate > endDate)   currentDate = new Date(endDate);
 
+// Simulazione localStorage per l'ambiente Claude
+const mockStorage = {};
+const localStorage = {
+  getItem: (key) => mockStorage[key] || null,
+  setItem: (key, value) => mockStorage[key] = value
+};
+
 const localKey='bagno_app_user';
 let userId=localStorage.getItem(localKey);
 if(!userId){userId=Date.now()+Math.random();localStorage.setItem(localKey,userId);}
 
-async function getState(){return (await fetch('/api/state')).json();}
-async function setState(o){return fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...o,user:userId})});}
+// Simulazione dell'API per l'ambiente Claude
+let appState = {
+  sopra: {state: 'free', user: null},
+  sotto: {state: 'free', user: null},
+  menu: {},
+  turni: {}
+};
+
+async function getState(){
+  return new Promise(resolve => {
+    setTimeout(() => resolve(appState), 100);
+  });
+}
+
+async function setState(o){
+  return new Promise(resolve => {
+    if(o.bagno) {
+      if(o.state === 'occupied') {
+        appState[o.bagno] = {state: 'occupied', user: o.user};
+      } else {
+        appState[o.bagno] = {state: 'free', user: null};
+      }
+    }
+    if(o.menu) appState.menu = o.menu;
+    if(o.turni) appState.turni = o.turni;
+    setTimeout(() => resolve(), 100);
+  });
+}
 
 async function render(){
  const d=await getState();
@@ -86,7 +119,6 @@ async function render(){
  renderMenuView(d.menu);
  renderTurniView(d.turni);
  document.getElementById('currentDayTitle').innerText = giorni[(currentDate.getDay()+6)%7];
-
 }
 
 function renderBagni(d){
@@ -186,7 +218,6 @@ function renderTurniView(turni){
   document.getElementById('nextDay').disabled = (currentDate.getTime() >= endDate.getTime());
 }
 
-
 function openTurniEdit(current){
   document.getElementById('turniView').classList.add('hidden');
   document.getElementById('turniEditIcon').classList.add('hidden');
@@ -204,7 +235,7 @@ function openTurniEdit(current){
     while (d <= endDate) {
       const opt=document.createElement('option');
       opt.value=d.toISOString().slice(0,10);
-      const dayName=giorni[(d.getDay()+6)%7];
+      const dayName=giorni[((d.getDay()+6)%7)];
       opt.text=`${dayName} ${d.getDate()}`;
       sel.appendChild(opt);
       d.setDate(d.getDate()+1);
@@ -222,7 +253,7 @@ function openTurniEdit(current){
 
   // mostra tutti i giorni presenti
   Object.keys(current).forEach(key=>{
-    const dayName=giorni[(new Date(key)).getDay()+6 %7];
+    const dayName=giorni[((new Date(key)).getDay()+6)%7];
     const block=document.createElement('div'); block.className='dayBlock';
     const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{delete current[key];openTurniEdit(current);}
     const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[key].pranzo; p.oninput=e=>current[key].pranzo=e.target.value;
