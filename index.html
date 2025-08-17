@@ -198,15 +198,19 @@ function renderTurniView(turni){
   const view=document.getElementById('turniView'),
         icon=document.getElementById('turniEditIcon');
 
-  const dateKey = currentDate.toISOString().slice(0,10);
   const selectedDayName = giorni[(currentDate.getDay()+6)%7];
 
   view.innerHTML='';
-  if(turni && turni[dateKey]){
-    const t = turni[dateKey];
-    view.innerHTML = `<div><strong>${selectedDayName}</strong><br>• Pranzo: ${t.pranzo||'-'}<br>• Cena: ${t.cena||'-'}</div>`;
+  if(turni && Object.keys(turni).length > 0){
+    // Mostra tutti i turni salvati
+    let content = '';
+    Object.keys(turni).forEach(dayKey => {
+      const t = turni[dayKey];
+      content += `<div style="margin-bottom:10px;"><strong>${dayKey}</strong><br>• Pranzo: ${t.pranzo||'-'}<br>• Cena: ${t.cena||'-'}</div>`;
+    });
+    view.innerHTML = content;
   } else {
-    view.innerHTML = `Nessun turno inserito per ${selectedDayName}`;
+    view.innerHTML = 'Nessun turno inserito';
   }
 
   icon.onclick = ()=>{ 
