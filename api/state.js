@@ -1,6 +1,5 @@
 import { kv } from '@upstash/kv';
 
-export const config = { runtime: 'edge' };
 
 const DEFAULT_STATE = {
   sopra: { state: 'free', user: null },
