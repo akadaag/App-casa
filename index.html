@@ -162,9 +162,10 @@ function closeMenuEdit(){
 
 function renderTurniView(turni){
   const view=document.getElementById('turniView'), icon=document.getElementById('turniEditIcon');
-  const selectedDayName = giorni[(currentDate.getDay()+6)%7];
+  const dateKey = currentDate.toISOString().slice(0,10);
+const selectedDayName = giorni[(currentDate.getDay()+6)%7];
   view.innerHTML='';
-  if(turni && turni[selectedDayName]){
+  if(turni && turni[dateKey]){
     const t=turni[selectedDayName];
     view.innerHTML=`<div><strong>${selectedDayName}</strong><br>• Pranzo: ${t.pranzo||'-'}<br>• Cena: ${t.cena||'-'}</div>`;
   } else {
@@ -204,7 +205,7 @@ function openTurniEdit(current){
     }
     sel.onchange = e=>{
       const key = e.target.value.split('|')[0];
-      current[key] = {pranzo:'',cena:''};
+      current[e.target.value.split('|')[1]] = {pranzo:'',cena:''};
       sel.classList.add('hidden');
       add.classList.remove('hidden');
       openTurniEdit(current);
