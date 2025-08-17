@@ -1,46 +1,42 @@
-// Stato iniziale dei due bagni + menu + turni
-let state = {
+import { kv } from '@vercel/kv';
+
+const DEFAULT_STATE = {
   sopra: { state: 'free', user: null },
   sotto: { state: 'free', user: null },
-  menu: null,        // es. { "Lunedì": {pranzo:"", cena:""}, ... }
-  turni: null        // es. { pranzo: "", cena: "" }
+  menu: {},
+  turni: {}
 };
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
+  let state = await kv.get('bagno_app_state');
+  if (!state) {
+    state = { ...DEFAULT_STATE };
+    await kv.set('bagno_app_state', state);
+  }
+
   if (req.method === 'GET') {
     return res.status(200).json(state);
   }
 
   if (req.method === 'POST') {
-    const body = req.body;
+    const { bagno, state: newState, user, menu, turni } = req.body;
 
-    // Aggiornamento bagno
-    if (body.bagno && body.state) {
-      const bagno = body.bagno;
-      const newState = body.state;
-      const user = body.user;
+    if (bagno && newState) {
       if (newState === 'occupied') {
         state[bagno] = { state: 'occupied', user };
       } else {
-        // libera solo se è lo stesso utente
         if (state[bagno].user === user) {
           state[bagno] = { state: 'free', user: null };
         }
       }
     }
 
-    // Aggiornamento menu
-    if (body.menu) {
-      state.menu = body.menu;
-    }
+    if (menu)  state.menu = menu;
+    if (turni) state.turni = turni;
 
-    // Aggiornamento turni
-    if (body.turni) {
-      state.turni = body.turni;
-    }
-
+    await kv.set('bagno_app_state', state);
     return res.status(200).json(state);
   }
 
-  res.status(405).send('Method not allowed');
+  res.status(405).json({error:'Method not allowed'});
 }
