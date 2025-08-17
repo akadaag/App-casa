@@ -169,13 +169,15 @@ function openMenuEdit(current){
   });
 
   add.onclick=()=>{
-    sel.innerHTML="";
+    sel.innerHTML="<option value=''>Seleziona giorno...</option>";
     giorni.forEach(g=>{const o=document.createElement('option');o.value=g;o.text=g;sel.appendChild(o);});
     sel.onchange=e=>{
-      current[e.target.value]={pranzo:'',cena:''};
-      sel.classList.add('hidden');
-      add.classList.remove('hidden');
-      openMenuEdit(current);
+      if(e.target.value){
+        current[e.target.value]={pranzo:'',cena:''};
+        sel.classList.add('hidden');
+        add.classList.remove('hidden');
+        openMenuEdit(current);
+      }
     };
     sel.classList.remove('hidden');
     add.classList.add('hidden');
@@ -228,37 +230,39 @@ function openTurniEdit(current){
   edit.innerHTML=''; sel.innerHTML=''; sel.classList.add('hidden');
   add.classList.remove('hidden'); save.classList.remove('hidden');
 
-  // pulsante + → dropdown delle date del periodo
+  // pulsante + → input manuale del giorno
   add.onclick=()=>{
-    sel.innerHTML="";
-    let d = new Date(startDate);
-    while (d <= endDate) {
-      const opt=document.createElement('option');
-      opt.value=d.toISOString().slice(0,10);
-      const dayName=giorni[((d.getDay()+6)%7)];
-      opt.text=`${dayName} ${d.getDate()}`;
-      sel.appendChild(opt);
-      d.setDate(d.getDate()+1);
-    }
-    sel.onchange=e=>{
-      const k=e.target.value;
-      current[k]={pranzo:'',cena:''};
-      sel.classList.add('hidden');
-      add.classList.remove('hidden');
-      openTurniEdit(current);
-    }
-    sel.classList.remove('hidden');
+    const dayInput = document.createElement('input');
+    dayInput.placeholder = 'Scrivi il giorno (es: Lunedì, Martedì...)';
+    dayInput.style.marginBottom = '10px';
+    
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Aggiungi';
+    confirmBtn.className = 'btn btn-secondary';
+    confirmBtn.onclick = () => {
+      const dayName = dayInput.value.trim();
+      if(dayName) {
+        // Usa il nome del giorno come chiave invece della data
+        current[dayName] = {pranzo:'', cena:''};
+        edit.removeChild(dayInput);
+        edit.removeChild(confirmBtn);
+        add.classList.remove('hidden');
+        openTurniEdit(current);
+      }
+    };
+    
+    edit.appendChild(dayInput);
+    edit.appendChild(confirmBtn);
     add.classList.add('hidden');
   };
 
   // mostra tutti i giorni presenti
   Object.keys(current).forEach(key=>{
-    const dayName=giorni[((new Date(key)).getDay()+6)%7];
     const block=document.createElement('div'); block.className='dayBlock';
     const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{delete current[key];openTurniEdit(current);}
     const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[key].pranzo; p.oninput=e=>current[key].pranzo=e.target.value;
     const c=document.createElement('input'); c.placeholder='Cena';  c.value=current[key].cena;  c.oninput=e=>current[key].cena=e.target.value;
-    const name=document.createElement('div'); name.innerHTML=`<strong>${dayName}</strong> `; name.appendChild(del);
+    const name=document.createElement('div'); name.innerHTML=`<strong>${key}</strong> `; name.appendChild(del);
     block.appendChild(name); block.appendChild(p); block.appendChild(c); edit.appendChild(block);
   });
 
