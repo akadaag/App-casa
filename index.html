@@ -239,6 +239,7 @@ function openTurniEdit(current){
     const confirmBtn = document.createElement('button');
     confirmBtn.textContent = 'Aggiungi';
     confirmBtn.className = 'btn btn-secondary';
+    confirmBtn.style.marginTop = '10px';
     confirmBtn.onclick = () => {
       const dayName = dayInput.value.trim();
       if(dayName) {
