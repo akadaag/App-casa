@@ -23,10 +23,10 @@
     .dayBlock{margin-top:12px;}
   </style>
 </head>
-
 <body>
 <h1>Stato Casa</h1>
 
+<!-- BAGNI -->
 <div class="section">
   <div id="bathroomSection"></div>
   <button id="useButton" class="btn btn-primary">Usa un bagno</button>
@@ -34,24 +34,22 @@
   <button id="freeButton" class="btn btn-secondary hidden">Ho finito</button>
 </div>
 
+<!-- MENU -->
 <div class="section card">
-  <div class="titleRow">
-    <span>🍽️ Menu</span>
-    <button id="menuEditIcon" class="edit-icon">✏️</button>
-  </div>
+  <div class="titleRow"><span>🍽️ Menu</span><button id="menuEditIcon" class="edit-icon">✏️</button></div>
   <div id="menuView"></div>
   <div id="menuEdit" class="hidden"></div>
+  <select id="menuSelect" class="hidden"></select>
   <button id="menuAddDay" class="btn-icon hidden">＋</button>
   <button id="menuSave" class="btn btn-secondary hidden">Salva</button>
 </div>
 
+<!-- TURNI -->
 <div class="section card">
-  <div class="titleRow">
-    <span>🧼 Turni piatti</span>
-    <button id="turniEditIcon" class="edit-icon">✏️</button>
-  </div>
+  <div class="titleRow"><span>🧼 Turni piatti</span><button id="turniEditIcon" class="edit-icon">✏️</button></div>
   <div id="turniView"></div>
   <div id="turniEdit" class="hidden"></div>
+  <select id="turniSelect" class="hidden"></select>
   <button id="turniAddDay" class="btn-icon hidden">＋</button>
   <button id="turniSave" class="btn btn-secondary hidden">Salva</button>
 </div>
@@ -89,52 +87,47 @@ function renderBagni(d){
   }else{
     free.classList.add('hidden'); use.classList.remove('hidden');
     use.onclick=()=>{
-      const f=['sopra','sotto'].filter(b=>d[b].state==='free');
-      if(!f.length){alert("Tutti occupati");return;}
+      const available=['sopra','sotto'].filter(b=>d[b].state==='free');
+      if(!available.length){alert("Tutti occupati");return;}
       ch.classList.remove('hidden'); ch.innerHTML='Seleziona bagno:<br>';
-      f.forEach(b=>{const btn=document.createElement('button'); btn.className='btn btn-choice'; btn.textContent=b; btn.onclick=async()=>{ await setState({bagno:b,state:'occupied'}); render(); }; ch.appendChild(btn);});
+      available.forEach(b=>{const bt=document.createElement('button');bt.className='btn btn-choice';bt.textContent=b;bt.onclick=async()=>{ await setState({bagno:b,state:'occupied'}); render(); };ch.appendChild(bt);});
     };
   }
 }
 
 // ---------- MENU ----------
 function renderMenuView(menu){
-  const view=document.getElementById('menuView'), icon=document.getElementById('menuEditIcon');
-  view.innerHTML= menu? '' : '(vuoto)';
-  if(menu){
-    Object.keys(menu).forEach(d=>{
-      view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${menu[d].pranzo||'-'}<br>• Cena: ${menu[d].cena||'-'}</div>`;
-    });
-  }
-  icon.onclick=()=>{ if(prompt('PIN?')===PIN){ openMenuEdit(menu||{}); } };
+  const view=document.getElementById('menuView'), editIcon=document.getElementById('menuEditIcon');
+  view.innerHTML=menu?'' : '(vuoto)';
+  if(menu){Object.keys(menu).forEach(d=>{view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${menu[d].pranzo||'-'}<br>• Cena: ${menu[d].cena||'-'}</div>`; });}
+  editIcon.onclick=()=>{if(prompt('PIN?')===PIN){openMenuEdit(menu||{});} };
 }
 function openMenuEdit(current){
   document.getElementById('menuView').classList.add('hidden');
   document.getElementById('menuEditIcon').classList.add('hidden');
-  const edit=document.getElementById('menuEdit'), add=document.getElementById('menuAddDay'), save=document.getElementById('menuSave');
-  edit.innerHTML=''; add.classList.remove('hidden'); save.classList.remove('hidden');
-
-  add.onclick=()=>{
-    const sel=document.createElement('select');
-    giorni.forEach(g=>{const op=document.createElement('option'); op.value=g; op.text=g; sel.appendChild(op);});
-    sel.onchange=e=>{ current[e.target.value]={pranzo:'',cena:''}; openMenuEdit(current); };
-    add.replaceWith(sel);
-  };
-
+  const edit=document.getElementById('menuEdit'), sel=document.getElementById('menuSelect'), add=document.getElementById('menuAddDay'), save=document.getElementById('menuSave');
+  edit.innerHTML='';
+  sel.innerHTML='';
+  sel.classList.remove('hidden');
+  add.classList.add('hidden');
+  save.classList.remove('hidden');
+  giorni.forEach(g=>{const o=document.createElement('option');o.value=g;o.text=g;sel.appendChild(o);});
+  sel.onchange=e=>{ const d=e.target.value; current[d]={pranzo:'',cena:''}; sel.classList.add('hidden'); add.classList.remove('hidden'); openMenuEdit(current); };
   Object.keys(current).forEach(d=>{
-    const block=document.createElement('div'); block.className='dayBlock';
-    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{ delete current[d]; openMenuEdit(current); };
-    const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[d].pranzo; p.oninput=e=>current[d].pranzo=e.target.value;
-    const c=document.createElement('input'); c.placeholder='Cena'; c.value=current[d].cena; c.oninput=e=>current[d].cena=e.target.value;
-    const title=document.createElement('div'); title.innerHTML=`<strong>${d}</strong>`; title.appendChild(del);
-    block.appendChild(title); block.appendChild(p); block.appendChild(c);
-    edit.appendChild(block);
+    const block=document.createElement('div');block.className='dayBlock';
+    const del=document.createElement('button');del.className='del-icon';del.textContent='🗑️';del.onclick=()=>{delete current[d];openMenuEdit(current);}
+    const p=document.createElement('input');p.placeholder='Pranzo';p.value=current[d].pranzo;p.oninput=e=>current[d].pranzo=e.target.value;
+    const c=document.createElement('input');c.placeholder='Cena';c.value=current[d].cena;p.oninput=e=>current[d].cena=e.target.value;
+    const title=document.createElement('div');title.innerHTML=`<strong>${d}</strong>`;title.appendChild(del);
+    block.appendChild(title); block.appendChild(p); block.appendChild(c); edit.appendChild(block);
   });
   edit.classList.remove('hidden');
-  save.onclick=async()=>{ await setState({menu:current}); closeMenuEdit(); };
+  add.onclick=()=>{sel.classList.remove('hidden');add.classList.add('hidden');};
+  save.onclick=async()=>{await setState({menu:current});closeMenuEdit();}
 }
 function closeMenuEdit(){
-  ['menuEdit','menuAddDay','menuSave'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['menuEdit','menuSave','menuSelect'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('menuAddDay').classList.remove('hidden');
   document.getElementById('menuEditIcon').classList.remove('hidden');
   document.getElementById('menuView').classList.remove('hidden');
   render();
@@ -142,42 +135,35 @@ function closeMenuEdit(){
 
 // ---------- TURNI ----------
 function renderTurniView(turni){
-  const view=document.getElementById('turniView'), icon=document.getElementById('turniEditIcon');
-  view.innerHTML=turni? '' : '(vuoto)';
-  if(turni){
-    Object.keys(turni).forEach(d=>{
-      view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${turni[d].pranzo||'-'}<br>• Cena: ${turni[d].cena||'-'}</div>`;
-    });
-  }
-  icon.onclick=()=>{ if(prompt('PIN?')===PIN){ openTurniEdit(turni||{}); } };
+  const view=document.getElementById('turniView'), editIcon=document.getElementById('turniEditIcon');
+  view.innerHTML=turni?'' : '(vuoto)';
+  if(turni){Object.keys(turni).forEach(d=>{view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${turni[d].pranzo||'-'}<br>• Cena: ${turni[d].cena||'-'}</div>`;});}
+  editIcon.onclick=()=>{if(prompt('PIN?')===PIN){openTurniEdit(turni||{});} };
 }
 function openTurniEdit(current){
-  const view=document.getElementById('turniView'), icon=document.getElementById('turniEditIcon');
-  const edit=document.getElementById('turniEdit'), add=document.getElementById('turniAddDay'), save=document.getElementById('turniSave');
-  view.classList.add('hidden'); icon.classList.add('hidden');
-  edit.innerHTML=''; add.classList.remove('hidden'); save.classList.remove('hidden');
-
-  add.onclick=()=>{
-    const sel=document.createElement('select');
-    giorni.forEach(g=>{const op=document.createElement('option'); op.value=g; op.text=g; sel.appendChild(op);});
-    sel.onchange=e=>{ current[e.target.value]={pranzo:'',cena:''}; openTurniEdit(current); };
-    add.replaceWith(sel);
-  };
-
+  document.getElementById('turniView').classList.add('hidden');
+  document.getElementById('turniEditIcon').classList.add('hidden');
+  const edit=document.getElementById('turniEdit'), sel=document.getElementById('turniSelect'), add=document.getElementById('turniAddDay'), save=document.getElementById('turniSave');
+  edit.innerHTML=''; sel.innerHTML='';
+  sel.classList.remove('hidden'); add.classList.add('hidden');
+  save.classList.remove('hidden');
+  giorni.forEach(g=>{const o=document.createElement('option');o.value=g;o.text=g;sel.appendChild(o);});
+  sel.onchange=e=>{const d=e.target.value; current[d]={pranzo:'',cena:''}; sel.classList.add('hidden'); add.classList.remove('hidden'); openTurniEdit(current);};
   Object.keys(current).forEach(d=>{
     const block=document.createElement('div'); block.className='dayBlock';
-    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{ delete current[d]; openTurniEdit(current); };
-    const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[d].pranzo; p.oninput=e=>current[d].pranzo=e.target.value;
-    const c=document.createElement('input'); c.placeholder='Cena'; c.value=current[d].cena; c.oninput=e=>current[d].cena=e.target.value;
-    const title=document.createElement('div'); title.innerHTML=`<strong>${d}</strong>`; title.appendChild(del);
-    block.appendChild(title); block.appendChild(p); block.appendChild(c);
-    edit.appendChild(block);
+    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{delete current[d]; openTurniEdit(current);}
+    const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[d].pranzo;p.oninput=e=>current[d].pranzo=e.target.value;
+    const c=document.createElement('input'); c.placeholder='Cena'; c.value=current[d].cena;c.oninput=e=>current[d].cena=e.target.value;
+    const title=document.createElement('div');title.innerHTML=`<strong>${d}</strong>`;title.appendChild(del);
+    block.appendChild(title); block.appendChild(p); block.appendChild(c); edit.appendChild(block);
   });
   edit.classList.remove('hidden');
-  save.onclick=async()=>{ await setState({turni:current}); closeTurniEdit(); };
+  add.onclick=()=>{sel.classList.remove('hidden'); add.classList.add('hidden');};
+  save.onclick=async()=>{await setState({turni:current}); closeTurniEdit();}
 }
 function closeTurniEdit(){
-  ['turniEdit','turniAddDay','turniSave'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  ['turniEdit','turniSave','turniSelect'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('turniAddDay').classList.remove('hidden');
   document.getElementById('turniEditIcon').classList.remove('hidden');
   document.getElementById('turniView').classList.remove('hidden');
   render();
