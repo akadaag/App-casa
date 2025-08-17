@@ -161,22 +161,31 @@ function closeMenuEdit(){
 }
 
 function renderTurniView(turni){
-  const view=document.getElementById('turniView'), icon=document.getElementById('turniEditIcon');
+  const view=document.getElementById('turniView'),
+        icon=document.getElementById('turniEditIcon');
+
   const dateKey = currentDate.toISOString().slice(0,10);
-const selectedDayName = giorni[(currentDate.getDay()+6)%7];
+  const selectedDayName = giorni[(currentDate.getDay()+6)%7];
+
   view.innerHTML='';
   if(turni && turni[dateKey]){
-    const t=turni[selectedDayName];
-    view.innerHTML=`<div><strong>${selectedDayName}</strong><br>• Pranzo: ${t.pranzo||'-'}<br>• Cena: ${t.cena||'-'}</div>`;
+    const t = turni[dateKey];
+    view.innerHTML = `<div><strong>${selectedDayName}</strong><br>• Pranzo: ${t.pranzo||'-'}<br>• Cena: ${t.cena||'-'}</div>`;
   } else {
-    view.innerHTML=`Nessun turno inserito per ${selectedDayName}`;
+    view.innerHTML = `Nessun turno inserito per ${selectedDayName}`;
   }
-  icon.onclick=()=>{if(prompt('PIN?')===PIN){openTurniEdit(turni||{});} };
 
-  // blocca frecce ai limiti
+  icon.onclick = ()=>{ 
+    if(prompt('PIN?')===PIN){ 
+      openTurniEdit(turni||{}); 
+    }
+  };
+
+  // blocca frecce ai limiti del periodo
   document.getElementById('prevDay').disabled = (currentDate.getTime() <= startDate.getTime());
   document.getElementById('nextDay').disabled = (currentDate.getTime() >= endDate.getTime());
 }
+
 
 function openTurniEdit(current){
   document.getElementById('turniView').classList.add('hidden');
@@ -185,47 +194,45 @@ function openTurniEdit(current){
         sel=document.getElementById('turniSelect'),
         add=document.getElementById('turniAddDay'),
         save=document.getElementById('turniSave');
+  edit.innerHTML=''; sel.innerHTML=''; sel.classList.add('hidden');
+  add.classList.remove('hidden'); save.classList.remove('hidden');
 
-  edit.innerHTML=''; sel.innerHTML='';
-  sel.classList.add('hidden');
-  add.classList.remove('hidden'); 
-  save.classList.remove('hidden');
-
-  // costruiamo il dropdown con tutte le date del periodo
-  add.onclick = () => {
-    sel.innerHTML = "";
+  // pulsante + → dropdown delle date del periodo
+  add.onclick=()=>{
+    sel.innerHTML="";
     let d = new Date(startDate);
     while (d <= endDate) {
-      const option = document.createElement('option');
-      const dayName = giorni[(d.getDay()+6)%7];
-      option.value = `${dayName}|${d.toISOString().slice(0,10)}`;
-      option.text = `${dayName} ${d.getDate()}`;
-      sel.appendChild(option);
-      d.setDate(d.getDate() + 1);
+      const opt=document.createElement('option');
+      opt.value=d.toISOString().slice(0,10);
+      const dayName=giorni[(d.getDay()+6)%7];
+      opt.text=`${dayName} ${d.getDate()}`;
+      sel.appendChild(opt);
+      d.setDate(d.getDate()+1);
     }
-    sel.onchange = e=>{
-      const key = e.target.value.split('|')[0];
-      current[e.target.value.split('|')[1]] = {pranzo:'',cena:''};
+    sel.onchange=e=>{
+      const k=e.target.value;
+      current[k]={pranzo:'',cena:''};
       sel.classList.add('hidden');
       add.classList.remove('hidden');
       openTurniEdit(current);
-    };
+    }
     sel.classList.remove('hidden');
     add.classList.add('hidden');
   };
 
-  Object.keys(current).forEach(d=>{
+  // mostra tutti i giorni presenti
+  Object.keys(current).forEach(key=>{
+    const dayName=giorni[(new Date(key)).getDay()+6 %7];
     const block=document.createElement('div'); block.className='dayBlock';
-    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{ delete current[d]; openTurniEdit(current); };
-    const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[d].pranzo; p.oninput=e=>current[d].pranzo=e.target.value;
-    const c=document.createElement('input'); c.placeholder='Cena'; c.value=current[d].cena; c.oninput=e=>current[d].cena=e.target.value;
-    const t=document.createElement('div'); t.innerHTML=`<strong>${d}</strong>`; t.appendChild(del);
-    block.appendChild(t); block.appendChild(p); block.appendChild(c);
-    edit.appendChild(block);
+    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{delete current[key];openTurniEdit(current);}
+    const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[key].pranzo; p.oninput=e=>current[key].pranzo=e.target.value;
+    const c=document.createElement('input'); c.placeholder='Cena';  c.value=current[key].cena;  c.oninput=e=>current[key].cena=e.target.value;
+    const name=document.createElement('div'); name.innerHTML=`<strong>${dayName}</strong> `; name.appendChild(del);
+    block.appendChild(name); block.appendChild(p); block.appendChild(c); edit.appendChild(block);
   });
 
   edit.classList.remove('hidden');
-  save.onclick=async()=>{ await setState({turni:current}); closeTurniEdit();}
+  save.onclick=async()=>{await setState({turni:current}); closeTurniEdit();}
 }
 
 function closeTurniEdit(){
