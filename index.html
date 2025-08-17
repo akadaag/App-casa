@@ -5,217 +5,233 @@
   <title>Stato Casa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      max-width: 500px;
-      margin: auto;
-    }
-    h1 { text-align: center; margin-bottom: 20px; }
-    .card {
-      border: 1px solid #ccc;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      font-size: 18px;
-    }
-    .status-free { color: #28a745; font-weight: bold; }
-    .status-occupied { color: #dc3545; font-weight: bold; }
-    .sectionTitle { font-weight: bold; margin-bottom: 8px; }
-    button {
-      display: block;
-      width: 100%;
-      padding: 15px;
-      margin: 12px 0;
-      font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    .btn-use { background-color: #007bff; color: white; }
-    .btn-free { background-color: #28a745; color: white; }
-    .btn-choice { background-color: #6c757d; color: white; margin-top: 8px; }
-    .btn-edit { background-color: #ffc107; color: #000; margin-top: 5px; }
-    .hidden { display: none; }
-    textarea { width:100%; padding:8px; border-radius:6px; margin-top:10px; }
+    body {font-family: Arial,sans-serif;max-width:500px;margin:auto;padding:20px;}
+    h1{text-align:center;margin-bottom:20px}
+    .card{border:1px solid #ccc;padding:15px;margin-bottom:15px;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,.1);position:relative;font-size:18px}
+    .status-free{color:#28a745;font-weight:bold;}
+    .status-occupied{color:#dc3545;font-weight:bold;}
+    button{width:100%;padding:12px;font-size:17px;border:none;border-radius:8px;margin-top:10px;cursor:pointer;}
+    .btn-use{background:#007bff;color:#fff;}
+    .btn-free{background:#28a745;color:#fff;}
+    .btn-choice{background:#6c757d;color:#fff;margin-top:5px;}
+    .edit-icon{position:absolute;top:10px;right:10px;border:none;background:none;font-size:19px;cursor:pointer;}
+    .plus-btn{margin-top:10px;font-size:26px;border:none;background:none;cursor:pointer;}
+    .del-icon{border:none;background:none;font-size:18px;cursor:pointer;margin-left:5px;}
+    .hidden{display:none;}
+    input{width:100%;padding:8px;border-radius:6px;margin:5px 0;}
+    .dayBlock{margin-top:8px;}
   </style>
 </head>
 <body>
-  <h1>Stato Casa</h1>
+<h1>Stato Casa</h1>
 
-  <!-- stato bagni -->
-  <div id="bathroomSection"></div>
-  <button id="useButton" class="btn-use">Usa un bagno</button>
-  <div id="choiceButtons" class="hidden"></div>
-  <button id="freeButton" class="btn-free hidden">Ho finito</button>
+<div id="bathroomSection"></div>
+<button id="useButton" class="btn-use">Usa un bagno</button>
+<div id="choiceButtons" class="hidden"></div>
+<button id="freeButton" class="btn-free hidden">Ho finito</button>
 
-  <!-- MENU -->
-  <div class="card">
-    <div class="sectionTitle">🍽️ Menu</div>
-    <div id="menuDisplay"></div>
-    <button id="menuEditBtn" class="btn-edit">✏️ Modifica Menu</button>
-    <div id="menuEditArea" class="hidden">
-      <textarea id="menuTextarea" rows="6" placeholder="Scrivi qui il menu..."></textarea>
-      <button id="menuSaveBtn" class="btn-free">Salva</button>
-    </div>
-  </div>
+<!-- MENU -->
+<div class="card" id="menuCard">
+  <b>🍽️ Menu</b>
+  <button class="edit-icon" id="menuEditIcon">✏️</button>
+  <div id="menuView"></div>
+  <div id="menuEdit" class="hidden"></div>
+  <button id="menuAddDay" class="plus-btn hidden">＋</button>
+  <button id="menuSave" class="btn-free hidden">Salva</button>
+</div>
 
-  <!-- TURNI -->
-  <div class="card">
-    <div class="sectionTitle">🧼 Turni piatti</div>
-    <div id="turniDisplay"></div>
-    <button id="turniEditBtn" class="btn-edit">✏️ Modifica Turni</button>
-    <div id="turniEditArea" class="hidden">
-      <textarea id="turniTextarea" rows="4" placeholder="Pranzo: Mario &#10;Cena: Anna"></textarea>
-      <button id="turniSaveBtn" class="btn-free">Salva</button>
-    </div>
-  </div>
+<!-- TURNI -->
+<div class="card" id="turniCard">
+  <b>🧼 Turni piatti</b>
+  <button class="edit-icon" id="turniEditIcon">✏️</button>
+  <div id="turniView"></div>
+  <div id="turniEdit" class="hidden"></div>
+  <button id="turniAddDay" class="plus-btn hidden">＋</button>
+  <button id="turniSave" class="btn-free hidden">Salva</button>
+</div>
 
-  <script>
-    // USER ID
-    const localKey='bagno_app_user';
-    let userId=localStorage.getItem(localKey);
-    if(!userId){ userId=Date.now()+''+Math.random(); localStorage.setItem(localKey,userId); }
+<script>
+const PIN='6789';
+const localKey='bagno_app_user';
+let userId=localStorage.getItem(localKey);
+if(!userId){ userId=Date.now()+Math.random(); localStorage.setItem(localKey,userId); }
 
-    async function getState(){
-      const r=await fetch('/api/state');
-      return r.json();
-    }
-    async function setState(newState){
-      await fetch('/api/state',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({...newState,user:userId})
+async function getState(){return fetch('/api/state').then(r=>r.json());}
+async function setState(d){return fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...d,user:userId})});}
+
+const giorni=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
+
+function getNextDay(list){
+  for(const g of giorni) if(!list.includes(g)) return g;
+  return null;
+}
+
+// ---------- RENDER PRINCIPALE ----------------
+async function render(){
+  const data=await getState();
+  renderBagni(data);
+  renderMenuView(data.menu);
+  renderTurniView(data.turni);
+}
+  
+// ---------- BAGNI ----------
+function renderBagni(data){
+  const cont=document.getElementById('bathroomSection');
+  cont.innerHTML='';
+  ['sopra','sotto'].forEach(b=>{
+    const c=document.createElement('div');
+    c.className='card';
+    const occ=data[b].state==='occupied';
+    c.innerHTML=`🚽 Bagno ${b} — <span class="${occ?'status-occupied':'status-free'}">${occ?'Occupato':'Libero'}</span>`;
+    cont.appendChild(c);
+  });
+  const useBtn=document.getElementById('useButton');
+  const freeBtn=document.getElementById('freeButton');
+  const choiceZone=document.getElementById('choiceButtons');
+  const myB=['sopra','sotto'].find(b=>data[b].state==='occupied' && data[b].user===userId);
+  choiceZone.classList.add('hidden'); choiceZone.innerHTML='';
+  if(myB){
+    useBtn.classList.add('hidden');
+    freeBtn.classList.remove('hidden');
+    freeBtn.onclick=async()=>{await setState({bagno:myB,state:'free'}); render();}
+  }else{
+    freeBtn.classList.add('hidden');
+    useBtn.classList.remove('hidden');
+    useBtn.onclick=()=>{
+      const freeList=['sopra','sotto'].filter(b=>data[b].state==='free');
+      if(!freeList.length){alert("Tutti occupati");return;}
+      choiceZone.classList.remove('hidden');
+      choiceZone.innerHTML='Seleziona bagno:<br>';
+      freeList.forEach(b=>{
+        const btn=document.createElement('button');
+        btn.className='btn-choice';
+        btn.textContent=b;
+        btn.onclick=async()=>{await setState({bagno:b,state:'occupied'}); render();}
+        choiceZone.appendChild(btn);
       });
-    }
+    };
+  }
+}
 
-    // --- RENDER -------------------------------------
-    async function render(){
-      const data=await getState();
-      renderBagni(data);
-      renderMenu(data);
-      renderTurni(data);
-    }
+// ---------- MENU ----------
+function renderMenuView(menu){
+  const view=document.getElementById('menuView');
+  const editIcon=document.getElementById('menuEditIcon');
+  view.innerHTML='';
+  if(menu){
+    Object.keys(menu).forEach(day=>{
+      view.innerHTML += `<div><strong>${day}</strong><br>• Pranzo: ${menu[day].pranzo||'-'}<br>• Cena: ${menu[day].cena||'-'}</div>`;
+    });
+  } else {
+    view.innerHTML='(vuoto)';
+  }
+  editIcon.onclick=()=>{
+    if(prompt('PIN?')===PIN){ openMenuEdit(menu||{"Lunedì":{pranzo:"",cena:""}}); }
+  };
+}
 
-    function renderBagni(data){
-        const container=document.getElementById('bathroomSection');
-        const useButton=document.getElementById('useButton');
-        const freeButton=document.getElementById('freeButton');
-        const choiceButtons=document.getElementById('choiceButtons');
+function openMenuEdit(current){
+  document.getElementById('menuView').classList.add('hidden');
+  document.getElementById('menuEditIcon').classList.add('hidden');
+  const editDiv=document.getElementById('menuEdit');
+  const addBtn=document.getElementById('menuAddDay');
+  const saveBtn=document.getElementById('menuSave');
+  editDiv.innerHTML='';
+  addBtn.classList.remove('hidden');
+  saveBtn.classList.remove('hidden');
+  addBtn.onclick=()=>{
+    const next=getNextDay(Object.keys(current));
+    if(!next) return;
+    current[next]={pranzo:'',cena:''};
+    openMenuEdit(current);
+  };
+  Object.keys(current).forEach(day=>{
+    const block=document.createElement('div'); block.className='dayBlock';
+    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️';
+    del.onclick=()=>{ delete current[day]; openMenuEdit(current); };
+    block.innerHTML=`<strong>${day}</strong> `;
+    block.appendChild(del);
+    block.innerHTML+='<br>Pranzo:';
+    const p=document.createElement('input'); p.value=current[day].pranzo; p.oninput=e=>current[day].pranzo=e.target.value;
+    block.appendChild(p);
+    block.innerHTML+='Cena:';
+    const c=document.createElement('input'); c.value=current[day].cena; c.oninput=e=>current[day].cena=e.target.value;
+    block.appendChild(c);
+    editDiv.appendChild(block);
+  });
+  editDiv.classList.remove('hidden');
+  saveBtn.onclick=async()=>{ await setState({menu:current}); closeMenuEdit(); };
+}
+function closeMenuEdit(){
+  document.getElementById('menuEdit').classList.add('hidden');
+  document.getElementById('menuAddDay').classList.add('hidden');
+  document.getElementById('menuSave').classList.add('hidden');
+  document.getElementById('menuEditIcon').classList.remove('hidden');
+  document.getElementById('menuView').classList.remove('hidden');
+  render();
+}
 
-        choiceButtons.classList.add('hidden');
-        choiceButtons.innerHTML='';
+// ---------- TURNI ----------
+function renderTurniView(turni){
+  const view=document.getElementById('turniView');
+  const editIcon=document.getElementById('turniEditIcon');
+  view.innerHTML='';
+  if(turni){
+    Object.keys(turni).forEach(day=>{
+      view.innerHTML += `<div><strong>${day}</strong><br>• Pranzo: ${turni[day].pranzo||'-'}<br>• Cena: ${turni[day].cena||'-'}</div>`;
+    });
+  } else {
+    view.innerHTML='(vuoto)';
+  }
+  editIcon.onclick=()=>{
+    if(prompt('PIN?')===PIN){ openTurniEdit(turni||{}); }
+  };
+}
 
-        container.innerHTML='';
-        ['sopra','sotto'].forEach(b=>{
-          const card=document.createElement('div');
-          card.className='card';
-          const occ=(data[b].state==='occupied');
-          const span=document.createElement('span');
-          span.className=occ?'status-occupied':'status-free';
-          span.textContent=occ?'Occupato':'Libero';
-          card.textContent=`🚽 Bagno ${b} — `;
-          card.appendChild(span);
-          container.appendChild(card);
-        });
+function openTurniEdit(current){
+  document.getElementById('turniView').classList.add('hidden');
+  document.getElementById('turniEditIcon').classList.add('hidden');
+  const editDiv=document.getElementById('turniEdit');
+  const addBtn=document.getElementById('turniAddDay');
+  const saveBtn=document.getElementById('turniSave');
+  editDiv.innerHTML='';
+  addBtn.classList.remove('hidden');
+  saveBtn.classList.remove('hidden');
+  addBtn.onclick=()=>{
+    const next=getNextDay(Object.keys(current));
+    if(!next) return;
+    current[next]={pranzo:'',cena:''};
+    openTurniEdit(current);
+  };
+  Object.keys(current).forEach(day=>{
+    const block=document.createElement('div'); block.className='dayBlock';
+    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️';
+    del.onclick=()=>{ delete current[day]; openTurniEdit(current); };
+    block.innerHTML=`<strong>${day}</strong> `;
+    block.appendChild(del);
+    block.innerHTML+='<br>Pranzo:';
+    const p=document.createElement('input'); p.value=current[day].pranzo; p.oninput=e=>current[day].pranzo=e.target.value;
+    block.appendChild(p);
+    block.innerHTML+='Cena:';
+    const c=document.createElement('input'); c.value=current[day].cena; c.oninput=e=>current[day].cena=e.target.value;
+    block.appendChild(c);
+    editDiv.appendChild(block);
+  });
+  editDiv.classList.remove('hidden');
+  saveBtn.onclick=async()=>{ await setState({turni:current}); closeTurniEdit(); };
+}
+function closeTurniEdit(){
+  document.getElementById('turniEdit').classList.add('hidden');
+  document.getElementById('turniAddDay').classList.add('hidden');
+  document.getElementById('turniSave').classList.add('hidden');
+  document.getElementById('turniEditIcon').classList.remove('hidden');
+  document.getElementById('turniView').classList.remove('hidden');
+  render();
+}
 
-        const myB=['sopra','sotto'].find(b=>data[b].state==='occupied' && data[b].user===userId);
-        if(myB){
-          useButton.classList.add('hidden');
-          freeButton.classList.remove('hidden');
-          freeButton.onclick=async()=>{await setState({bagno:myB,state:'free'}); render();}
-        } else {
-          freeButton.classList.add('hidden');
-          useButton.classList.remove('hidden');
-          useButton.onclick=()=>{
-            const freeList=['sopra','sotto'].filter(b=>data[b].state==='free');
-            if(!freeList.length){alert('Tutti i bagni sono occupati!'); return;}
-            choiceButtons.classList.remove('hidden');
-            choiceButtons.innerHTML='Seleziona bagno:<br>';
-            freeList.forEach(b=>{
-              const btn=document.createElement('button');
-              btn.className='btn-choice'; btn.textContent=b;
-              btn.onclick=async()=>{await setState({bagno:b,state:'occupied'}); render();}
-              choiceButtons.appendChild(btn);
-            });
-          };
-        }
-    }
-
-    // --- MENU -----------------------------------------
-    function renderMenu(data){
-      const d=document;
-      const out=d.getElementById('menuDisplay');
-      const editBtn=d.getElementById('menuEditBtn');
-      const editArea=d.getElementById('menuEditArea');
-      const ta=d.getElementById('menuTextarea');
-      out.innerHTML='';
-
-      if(data.menu){
-        const menu=data.menu; // es. { Lunedì:{pranzo:"",cena:""},... }
-        Object.keys(menu).forEach(day=>{
-          const wrap=document.createElement('div');
-          wrap.innerHTML=`<strong>${day}</strong><br>• Pranzo: ${menu[day].pranzo || '-'}<br>• Cena: ${menu[day].cena || '-'}`;
-          out.appendChild(wrap);
-        });
-      } else out.textContent='(nessun menu inserito)';
-
-      editBtn.onclick=()=>{
-        const pin=prompt('Inserisci PIN');
-        if(pin==='6789'){
-          editBtn.classList.add('hidden');
-          editArea.classList.remove('hidden');
-          ta.value=JSON.stringify(data.menu || {},null,2);
-        }
-      };
-      document.getElementById('menuSaveBtn').onclick=async()=>{
-        let newMenu;
-        try{ newMenu=JSON.parse(ta.value.trim()); }catch{ alert('Formato JSON non valido'); return; }
-        await setState({menu:newMenu});
-        editArea.classList.add('hidden'); editBtn.classList.remove('hidden');
-        render();
-      };
-    }
-
-    // --- TURNI -----------------------------------------
-    function renderTurni(data){
-      const d=document;
-      const out=d.getElementById('turniDisplay');
-      const editBtn=d.getElementById('turniEditBtn');
-      const editArea=d.getElementById('turniEditArea');
-      const ta=d.getElementById('turniTextarea');
-
-      out.innerHTML='';
-      if(data.turni){
-        out.innerHTML=`• Pranzo: ${data.turni.pranzo || '-'}<br>• Cena: ${data.turni.cena || '-'}`;
-      } else out.textContent='(nessun turno inserito)';
-
-      editBtn.onclick=()=>{
-        const pin=prompt('Inserisci PIN');
-        if(pin==='6789'){
-          editBtn.classList.add('hidden');
-          editArea.classList.remove('hidden');
-          ta.value=`Pranzo: ${data.turni?.pranzo || ''}\nCena: ${data.turni?.cena || ''}`;
-        }
-      };
-      document.getElementById('turniSaveBtn').onclick=async()=>{
-        const lines=ta.value.split('\n');
-        const obj={pranzo:'',cena:''};
-        lines.forEach(l=>{
-          if(l.toLowerCase().startsWith('pranzo')) obj.pranzo=l.split(':')[1]?.trim();
-          if(l.toLowerCase().startsWith('cena'))   obj.cena=l.split(':')[1]?.trim();
-        });
-        await setState({turni:obj});
-        editArea.classList.add('hidden'); editBtn.classList.remove('hidden');
-        render();
-      };
-    }
-
-    //-------------------------
-    render();
-    // refresh + notifica
-    setInterval(async()=>{const old=await getState(); setTimeout(()=>{render();},0);},5000);
-  </script>
+// ----- INIT -----
+render();
+setInterval(render,5000);
+</script>
 </body>
 </html>
