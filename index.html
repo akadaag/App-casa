@@ -57,6 +57,7 @@
 <script>
 const PIN='6789';
 const giorni=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
+
 const localKey='bagno_app_user';
 let userId=localStorage.getItem(localKey);
 if(!userId){userId=Date.now()+Math.random();localStorage.setItem(localKey,userId);}
@@ -73,7 +74,8 @@ async function render(){
 
 // ---------- BAGNI ----------
 function renderBagni(d){
-  const cont=document.getElementById('bathroomSection'); cont.innerHTML='';
+  const cont=document.getElementById('bathroomSection');
+  cont.innerHTML='';
   ['sopra','sotto'].forEach(b=>{
     const occ=(d[b].state==='occupied');
     cont.innerHTML+=`<div class="card" style="margin-bottom:10px">🚽 Bagno ${b} — <span class="${occ?'status-occupied':'status-free'}">${occ?'Occupato':'Libero'}</span></div>`;
@@ -81,26 +83,23 @@ function renderBagni(d){
   const use=document.getElementById('useButton'),free=document.getElementById('freeButton'),ch=document.getElementById('choiceButtons');
   const myB=['sopra','sotto'].find(b=>d[b].state==='occupied'&&d[b].user===userId);
   ch.classList.add('hidden'); ch.innerHTML='';
-  if(myB){
-    use.classList.add('hidden'); free.classList.remove('hidden');
-    free.onclick=async()=>{ await setState({bagno:myB,state:'free'}); render(); };
-  }else{
-    free.classList.add('hidden'); use.classList.remove('hidden');
-    use.onclick=()=>{
-      const available=['sopra','sotto'].filter(b=>d[b].state==='free');
-      if(!available.length){alert("Tutti occupati");return;}
+  if(myB){ use.classList.add('hidden'); free.classList.remove('hidden');
+    free.onclick=async()=>{ await setState({bagno:myB,state:'free'}); render();}
+  }else{ free.classList.add('hidden'); use.classList.remove('hidden');
+    use.onclick=()=>{ const f=['sopra','sotto'].filter(b=>d[b].state==='free');
+      if(!f.length){alert("Tutti occupati");return;}
       ch.classList.remove('hidden'); ch.innerHTML='Seleziona bagno:<br>';
-      available.forEach(b=>{const bt=document.createElement('button');bt.className='btn btn-choice';bt.textContent=b;bt.onclick=async()=>{ await setState({bagno:b,state:'occupied'}); render(); };ch.appendChild(bt);});
+      f.forEach(b=>{const bt=document.createElement('button');bt.className='btn btn-choice';bt.textContent=b;bt.onclick=async()=>{ await setState({bagno:b,state:'occupied'}); render(); };ch.appendChild(bt);});
     };
   }
 }
 
 // ---------- MENU ----------
 function renderMenuView(menu){
-  const view=document.getElementById('menuView'), editIcon=document.getElementById('menuEditIcon');
-  view.innerHTML=menu?'' : '(vuoto)';
-  if(menu){Object.keys(menu).forEach(d=>{view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${menu[d].pranzo||'-'}<br>• Cena: ${menu[d].cena||'-'}</div>`; });}
-  editIcon.onclick=()=>{if(prompt('PIN?')===PIN){openMenuEdit(menu||{});} };
+  const view=document.getElementById('menuView'), icon=document.getElementById('menuEditIcon');
+  view.innerHTML=menu?'':'(vuoto)';
+  if(menu){Object.keys(menu).forEach(d=>{view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${menu[d].pranzo||'-'}<br>• Cena: ${menu[d].cena||'-'}</div>`});}
+  icon.onclick=()=>{if(prompt('PIN?')===PIN){openMenuEdit(menu||{});} };
 }
 function openMenuEdit(current){
   document.getElementById('menuView').classList.add('hidden');
@@ -108,22 +107,36 @@ function openMenuEdit(current){
   const edit=document.getElementById('menuEdit'), sel=document.getElementById('menuSelect'), add=document.getElementById('menuAddDay'), save=document.getElementById('menuSave');
   edit.innerHTML='';
   sel.innerHTML='';
-  sel.classList.remove('hidden');
-  add.classList.add('hidden');
+  sel.classList.add('hidden');
+  add.classList.remove('hidden');
   save.classList.remove('hidden');
-  giorni.forEach(g=>{const o=document.createElement('option');o.value=g;o.text=g;sel.appendChild(o);});
-  sel.onchange=e=>{ const d=e.target.value; current[d]={pranzo:'',cena:''}; sel.classList.add('hidden'); add.classList.remove('hidden'); openMenuEdit(current); };
-  Object.keys(current).forEach(d=>{
-    const block=document.createElement('div');block.className='dayBlock';
-    const del=document.createElement('button');del.className='del-icon';del.textContent='🗑️';del.onclick=()=>{delete current[d];openMenuEdit(current);}
-    const p=document.createElement('input');p.placeholder='Pranzo';p.value=current[d].pranzo;p.oninput=e=>current[d].pranzo=e.target.value;
-    const c=document.createElement('input');c.placeholder='Cena';c.value=current[d].cena;p.oninput=e=>current[d].cena=e.target.value;
-    const title=document.createElement('div');title.innerHTML=`<strong>${d}</strong>`;title.appendChild(del);
-    block.appendChild(title); block.appendChild(p); block.appendChild(c); edit.appendChild(block);
+
+  Object.keys(current).forEach(day=>{
+    const block=document.createElement('div'); block.className='dayBlock';
+    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{delete current[day]; openMenuEdit(current);};
+    const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[day].pranzo; p.oninput=e=>current[day].pranzo=e.target.value;
+    const c=document.createElement('input'); c.placeholder='Cena'; c.value=current[day].cena; c.oninput=e=>current[day].cena=e.target.value;
+    const title=document.createElement('div'); title.innerHTML=`<strong>${day}</strong>`; title.appendChild(del);
+    block.appendChild(title); block.appendChild(p); block.appendChild(c);
+    edit.appendChild(block);
   });
+
+  add.onclick=()=>{
+    sel.innerHTML="";
+    giorni.forEach(g=>{const o=document.createElement('option');o.value=g;o.text=g;sel.appendChild(o);});
+    sel.onchange=e=>{
+      const d=e.target.value;
+      current[d]={pranzo:'',cena:''};
+      sel.classList.add('hidden');
+      add.classList.remove('hidden');
+      openMenuEdit(current);
+    };
+    sel.classList.remove('hidden');
+    add.classList.add('hidden');
+  };
+
   edit.classList.remove('hidden');
-  add.onclick=()=>{sel.classList.remove('hidden');add.classList.add('hidden');};
-  save.onclick=async()=>{await setState({menu:current});closeMenuEdit();}
+  save.onclick=async()=>{await setState({menu:current}); closeMenuEdit();}
 }
 function closeMenuEdit(){
   ['menuEdit','menuSave','menuSelect'].forEach(id=>document.getElementById(id).classList.add('hidden'));
@@ -135,30 +148,46 @@ function closeMenuEdit(){
 
 // ---------- TURNI ----------
 function renderTurniView(turni){
-  const view=document.getElementById('turniView'), editIcon=document.getElementById('turniEditIcon');
-  view.innerHTML=turni?'' : '(vuoto)';
-  if(turni){Object.keys(turni).forEach(d=>{view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${turni[d].pranzo||'-'}<br>• Cena: ${turni[d].cena||'-'}</div>`;});}
-  editIcon.onclick=()=>{if(prompt('PIN?')===PIN){openTurniEdit(turni||{});} };
+  const view=document.getElementById('turniView'), icon=document.getElementById('turniEditIcon');
+  view.innerHTML=turni?'':'(vuoto)';
+  if(turni){Object.keys(turni).forEach(d=>{view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${turni[d].pranzo||'-'}<br>• Cena: ${turni[d].cena||'-'}</div>`});}
+  icon.onclick=()=>{if(prompt('PIN?')===PIN){openTurniEdit(turni||{});} };
 }
 function openTurniEdit(current){
   document.getElementById('turniView').classList.add('hidden');
   document.getElementById('turniEditIcon').classList.add('hidden');
   const edit=document.getElementById('turniEdit'), sel=document.getElementById('turniSelect'), add=document.getElementById('turniAddDay'), save=document.getElementById('turniSave');
-  edit.innerHTML=''; sel.innerHTML='';
-  sel.classList.remove('hidden'); add.classList.add('hidden');
+  edit.innerHTML='';
+  sel.innerHTML='';
+  sel.classList.add('hidden');
+  add.classList.remove('hidden');
   save.classList.remove('hidden');
-  giorni.forEach(g=>{const o=document.createElement('option');o.value=g;o.text=g;sel.appendChild(o);});
-  sel.onchange=e=>{const d=e.target.value; current[d]={pranzo:'',cena:''}; sel.classList.add('hidden'); add.classList.remove('hidden'); openTurniEdit(current);};
-  Object.keys(current).forEach(d=>{
+
+  Object.keys(current).forEach(day=>{
     const block=document.createElement('div'); block.className='dayBlock';
-    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{delete current[d]; openTurniEdit(current);}
-    const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[d].pranzo;p.oninput=e=>current[d].pranzo=e.target.value;
-    const c=document.createElement('input'); c.placeholder='Cena'; c.value=current[d].cena;c.oninput=e=>current[d].cena=e.target.value;
-    const title=document.createElement('div');title.innerHTML=`<strong>${d}</strong>`;title.appendChild(del);
-    block.appendChild(title); block.appendChild(p); block.appendChild(c); edit.appendChild(block);
+    const del=document.createElement('button'); del.className='del-icon'; del.textContent='🗑️'; del.onclick=()=>{delete current[day]; openTurniEdit(current);};
+    const p=document.createElement('input'); p.placeholder='Pranzo'; p.value=current[day].pranzo; p.oninput=e=>current[day].pranzo=e.target.value;
+    const c=document.createElement('input'); c.placeholder='Cena'; c.value=current[day].cena; c.oninput=e=>current[day].cena=e.target.value;
+    const title=document.createElement('div'); title.innerHTML=`<strong>${day}</strong>`; title.appendChild(del);
+    block.appendChild(title); block.appendChild(p); block.appendChild(c);
+    edit.appendChild(block);
   });
+
+  add.onclick=()=>{
+    sel.innerHTML="";
+    giorni.forEach(g=>{const o=document.createElement('option');o.value=g;o.text=g;sel.appendChild(o);});
+    sel.onchange=e=>{
+      const d=e.target.value;
+      current[d]={pranzo:'',cena:''};
+      sel.classList.add('hidden');
+      add.classList.remove('hidden');
+      openTurniEdit(current);
+    };
+    sel.classList.remove('hidden');
+    add.classList.add('hidden');
+  };
+
   edit.classList.remove('hidden');
-  add.onclick=()=>{sel.classList.remove('hidden'); add.classList.add('hidden');};
   save.onclick=async()=>{await setState({turni:current}); closeTurniEdit();}
 }
 function closeTurniEdit(){
@@ -174,3 +203,4 @@ setInterval(render,5000);
 </script>
 </body>
 </html>
+
