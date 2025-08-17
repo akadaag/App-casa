@@ -85,7 +85,8 @@ async function render(){
  renderBagni(d);
  renderMenuView(d.menu);
  renderTurniView(d.turni);
- document.getElementById('currentDayTitle').innerText = giorni[currentDate.getDay()-1];
+ document.getElementById('currentDayTitle').innerText = giorni[(currentDate.getDay()+6)%7];
+
 }
 
 function renderBagni(d){
@@ -161,7 +162,7 @@ function closeMenuEdit(){
 
 function renderTurniView(turni){
   const view=document.getElementById('turniView'), icon=document.getElementById('turniEditIcon');
-  const selectedDayName = giorni[currentDate.getDay()-1];
+  const selectedDayName = giorni[(currentDate.getDay()+6)%7];
   view.innerHTML='';
   if(turni && turni[selectedDayName]){
     const t=turni[selectedDayName];
