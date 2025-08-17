@@ -1,6 +1,6 @@
 import { kv } from '@vercel/kv';
 
-export const config = { runtime: 'edge' };  // 👈 necessario per usare Upstash KV
+export const config = { runtime: 'edge' };
 
 const DEFAULT_STATE = {
   sopra: { state: 'free', user: null },
@@ -63,13 +63,10 @@ export default async function handler(req) {
     });
   }
 
-  return new Response(JSON.stringify({ error: 'Method not allowed'}), {
+  // 5) Metodo non supportato
+  return new Response(JSON.stringify({ error: 'Method not allowed' }), {
     status: 405,
     headers: { 'Content-Type': 'application/json' }
   });
 }
 
-
-  // Metodo non supportato
-  return res.status(405).json({ error: 'Method not allowed' });
-}
