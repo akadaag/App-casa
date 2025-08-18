@@ -1,116 +1,82 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="UTF-8" />
-<title>Stato Casa</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<style>
-  body{font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:20px;}
-  h1{text-align:center;margin-bottom:20px;}
-  .section{margin-bottom:32px;}
-  .card{padding:16px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.15);background:#fff;}
-  .titleRow{display:flex;justify-content:space-between;align-items:center;font-size:20px;font-weight:bold;margin-bottom:8px;}
-  .edit-icon{border:none;background:none;font-size:20px;cursor:pointer;}
-  .status-free{color:#28a745;font-weight:bold;}
-  .status-occupied{color:#dc3545;font-weight:bold;}
-  .btn{width:100%;padding:13px;font-size:17px;border:none;border-radius:8px;cursor:pointer;}
-  .btn-primary{background:#2196F3;color:#fff;}
-  .btn-secondary{background:#4caf50;color:#fff;}
-  .btn-choice{background:#607d8b;color:#fff;margin-top:8px;}
-  .btn-icon{background:none;border:none;font-size:24px;cursor:pointer;margin-top:10px;}
-  .hidden{display:none;}
-  input,select{width:100%;padding:8px;border-radius:6px;margin:5px 0;}
-  .dayBlock{margin-top:12px;}
-  .navRow{display:flex;justify-content:space-between;margin-bottom:6px;}
-</style>
-</head>
-
-<body>
-<h1>Stato Casa</h1>
-
-<div class="section">
-  <div id="bathroomSection"></div>
-  <button id="useButton" class="btn btn-primary">Usa un bagno</button>
-  <div id="choiceButtons" class="hidden"></div>
-  <button id="freeButton" class="btn btn-secondary hidden">Ho finito</button>
-</div>
-
-<div class="section card">
-  <div class="titleRow"><span>🍽️ Menu</span><button id="menuEditIcon" class="edit-icon">✏️</button></div>
-  <div id="menuView"></div>
-  <div id="menuEdit" class="hidden"></div>
-  <button id="menuAddDay" class="btn-icon hidden">＋</button>
-  <button id="menuSave" class="btn btn-secondary hidden">Salva</button>
-</div>
-
-<div class="section card">
-  <div class="titleRow"><span>🧼 Turni piatti</span><button id="turniEditIcon" class="edit-icon">✏️</button></div>
-  <div class="navRow">
-    <button id="prevDay" class="edit-icon">◀️</button>
-    <span id="currentDayTitle"></span>
-    <button id="nextDay" class="edit-icon">▶️</button>
-  </div>
-  <div id="turniView"></div>
-  <div id="turniEdit" class="hidden"></div>
-  <button id="turniAddDay" class="btn-icon hidden">＋</button>
-  <button id="turniSave" class="btn btn-secondary hidden">Salva</button>
-</div>
-
 <script>
-const PIN='6789';
+const PIN='6789'; // Questo è il nostro "user ID" e anche la password per le modifiche
 
+// --- FUNZIONI DI COMUNICAZIONE CON IL SERVER ---
 async function getState(){
-  return fetch('/api/state').then(r=>r.json());
+  // Aggiungiamo un try-catch per evitare che l'app si blocchi se la rete fallisce
+  try {
+    const response = await fetch('/api/state');
+    if (!response.ok) return null; // Gestisce errori del server
+    return response.json();
+  } catch (e) {
+    console.error("Errore di rete", e);
+    return null; // Ritorna null se non riesce a connettersi
+  }
 }
-async function setState(o){
+
+async function setState(data){
   return fetch('/api/state',{
     method:'POST',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(o)
+    body:JSON.stringify(data)
   });
 }
 
+// --- FUNZIONE PRINCIPALE DI RENDER ---
 async function render(){
-  const d = await getState();
-  renderBagni(d);
-  renderMenuView(d.menu);
-  renderTurniView(d.turni);
+  const state = await getState();
+  // Se lo stato non è stato caricato (es. per un errore), non fare nulla
+  if (!state) return;
+
+  renderBagni(state);
+  renderMenuView(state.menu);
+  renderTurniView(state.turni);
 }
 
 // ----------- BAGNI ----------
-function renderBagni(d){
+function renderBagni(state){
   const cont=document.getElementById('bathroomSection'); cont.innerHTML='';
   ['sopra','sotto'].forEach(b=>{
-    const occ=(d[b].state==='occupied');
+    const occ=(state[b].state==='occupied');
     cont.innerHTML+=`<div class="card" style="margin-bottom:10px">🚽 Bagno ${b} — <span class="${occ?'status-occupied':'status-free'}">${occ?'Occupato':'Libero'}</span></div>`;
   });
-  const use=document.getElementById('useButton'),
-        free=document.getElementById('freeButton'),
-        ch=document.getElementById('choiceButtons');
-  const myB=['sopra','sotto'].find(b=>d[b].state==='occupied'&&d[b].user===d.user);
-  ch.classList.add('hidden'); ch.innerHTML='';
-  if(myB){ use.classList.add('hidden'); free.classList.remove('hidden');
-    free.onclick = async () => {
--  await setState({ bagno: myB, state: 'free' });
-+  await setState({ bagno: myB, state: 'free', user: PIN });
-  render();
-};
 
+  const useBtn=document.getElementById('useButton');
+  const freeBtn=document.getElementById('freeButton');
+  const choiceDiv=document.getElementById('choiceButtons');
+
+  // CORREZIONE 3: Confronta con PIN, non con state.user
+  const myBathroom = ['sopra','sotto'].find(b => state[b].state === 'occupied' && state[b].user === PIN);
+
+  choiceDiv.classList.add('hidden'); choiceDiv.innerHTML='';
+
+  if(myBathroom){
+    useBtn.classList.add('hidden');
+    freeBtn.classList.remove('hidden');
+    freeBtn.onclick = async () => {
+      // CORREZIONE 1: Aggiungi 'user: PIN'
+      await setState({ bagno: myBathroom, state: 'free', user: PIN });
+      render();
+    };
   }else{
-    free.classList.add('hidden'); use.classList.remove('hidden');
-    use.onclick=()=>{
-      const available=['sopra','sotto'].filter(b=>d[b].state==='free');
-      if(!available.length){alert("Tutti occupati");return;}
-      ch.classList.remove('hidden'); ch.innerHTML='Seleziona bagno:<br>';
-      available.forEach(b=>{
-        const btn=document.createElement('button');btn.className='btn btn-choice';
-        btn.textContent=b; btn.onclick = async () => {
--  await setState({ bagno: b, state: 'occupied' });
-+  await setState({ bagno: b, state: 'occupied', user: PIN });
-  render();
-};
+    freeBtn.classList.add('hidden');
+    useBtn.classList.remove('hidden');
+    useBtn.onclick=()=>{
+      const available=['sopra','sotto'].filter(b => state[b].state === 'free');
+      if(available.length === 0){ alert("Tutti i bagni sono occupati!"); return; }
 
-        ch.appendChild(btn);
+      choiceDiv.classList.remove('hidden');
+      choiceDiv.innerHTML='Seleziona bagno:<br>';
+      available.forEach(b=>{
+        const btn=document.createElement('button');
+        btn.className='btn btn-choice';
+        btn.textContent=b;
+        btn.onclick = async () => {
+          // CORREZIONE 1: Aggiungi 'user: PIN'
+          await setState({ bagno: b, state: 'occupied', user: PIN });
+          render();
+        };
+        choiceDiv.appendChild(btn);
       });
     };
   }
@@ -118,14 +84,17 @@ function renderBagni(d){
 
 // ----------- MENU ----------
 function renderMenuView(menu){
-  const view=document.getElementById('menuView'), icon=document.getElementById('menuEditIcon');
-  view.innerHTML=menu?'':'(vuoto)';
-  if(menu){
-    Object.keys(menu).forEach(d=>{
-      view.innerHTML+=`<div><strong>${d}</strong><br>• Pranzo: ${menu[d].pranzo||'-'}<br>• Cena: ${menu[d].cena||'-'}</div>`;
+  const view = document.getElementById('menuView'), icon = document.getElementById('menuEditIcon');
+  view.innerHTML = ''; // Pulisci sempre prima
+  const days = Object.keys(menu || {});
+  if (days.length === 0) {
+    view.innerHTML = '(vuoto)';
+  } else {
+    days.forEach(d => {
+      view.innerHTML += `<div><strong>${d}</strong><br>• Pranzo: ${menu[d].pranzo || '-'}<br>• Cena: ${menu[d].cena || '-'}</div>`;
     });
   }
-  icon.onclick=()=>{ if(prompt('PIN?')===PIN){ openMenuEdit(menu||{}); } };
+  icon.onclick = () => { if(prompt('PIN?') === PIN){ openMenuEdit(menu || {}); } };
 }
 
 function openMenuEdit(current){
@@ -154,7 +123,11 @@ function openMenuEdit(current){
   };
 
   edit.classList.remove('hidden');
-  save.onclick=async()=>{ await setState({menu:current}); closeMenuEdit(); };
+  save.onclick=async()=>{
+    // CORREZIONE 2: Aggiungi 'pin: PIN'
+    await setState({menu:current, pin: PIN});
+    closeMenuEdit();
+  };
 }
 
 function closeMenuEdit(){
@@ -216,7 +189,11 @@ function openTurniEdit(current){
     if(newDay){ current[newDay]={pranzo:'',cena:''}; openTurniEdit(current); }
   };
   edit.classList.remove('hidden');
-  save.onclick=async()=>{ await setState({turni:current}); closeTurniEdit(); };
+  save.onclick=async()=>{
+    // CORREZIONE 2: Aggiungi 'pin: PIN'
+    await setState({turni:current, pin: PIN});
+    closeTurniEdit();
+  };
 }
 
 function closeTurniEdit(){
@@ -228,9 +205,7 @@ function closeTurniEdit(){
   render();
 }
 
-render();
-setInterval(render,2000);
+// --- AVVIO E AGGIORNAMENTO AUTOMATICO ---
+render(); // Carica i dati la prima volta
+setInterval(render, 3000); // Aggiorna i dati ogni 3 secondi
 </script>
-</body>
-</html>
-
